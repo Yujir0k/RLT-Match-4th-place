@@ -5,6 +5,7 @@
 Проект состоит из двух частей:
 - `frontend` на `React + Vite + Tailwind CSS`
 - `backend` на `FastAPI`, который поднимает локальный ML runtime из пакета `hybrid_lot_matcher_package.zip`
+- `notebooks/ml` с Jupyter notebooks по ML-составляющей проекта
 
 ## Что реализовано
 
@@ -14,7 +15,8 @@
 - ручной маппинг колонок `ID / Категория / Наименование / Характеристики`
 - шаг 2: экран ожидания анализа с прогрессом и polling статуса backend
 - шаг 3: executive dashboard с метриками по результатам анализа
-- шаг 4: рабочее пространство с категориями, канбан-доской и карточками тендеров
+- шаг 4: рабочее пространство с товарами поставщика, канбан-доской и карточками тендеров
+- top-3 релевантных `pn_lot` для каждого товара из загруженной матрицы
 - drawer "Почему это совпало?" с explainable diff view
 - feedback по карточкам: like / dislike / report
 - массовые действия: экспорт и перевод карточек в статус "Готовы к подаче"
@@ -29,6 +31,13 @@
 - хранение результатов, workflow-статусов и feedback в `SQLite`
 - API для dashboard, workspace, explain drawer, feedback, bulk actions, export
 - системные источники: загрузка базы закупок и справочника ОКПД2
+
+### ML notebooks
+- `notebooks/ml/00_ml_package_overview.ipynb` — обзор ML-пакета, manifest и зависимости
+- `notebooks/ml/01_hybrid_matcher_runtime.ipynb` — runtime-код `HybridLotMatcher`
+- `notebooks/ml/02_ml_baseline_full_source.ipynb` — baseline-код: нормализация, признаки, retrieval, scoring
+- `notebooks/ml/03_batch_prediction.ipynb` — CLI и Python API для пакетного прогноза
+- `notebooks/ml/04_model_config_and_examples.ipynb` — конфиг модели и примеры CSV
 
 ## Архитектура
 
@@ -48,6 +57,7 @@ FastAPI backend
 
 ```text
 src/                 frontend
+notebooks/ml/        Jupyter notebooks с ML-кодом
 backend/             FastAPI backend
 backend/data/        локальная БД и runtime-данные
 ```
@@ -127,7 +137,7 @@ Vite уже проксирует запросы `/api` на backend.
 - `POST /api/analysis/start`
 - `GET /api/analysis/{sessionId}/status`
 - `GET /api/analysis/{sessionId}/dashboard`
-- `GET /api/workspace/{sessionId}/categories`
+- `GET /api/workspace/{sessionId}/products`
 - `GET /api/workspace/{sessionId}/board`
 - `POST /api/workspace/{sessionId}/matches/{matchId}/confirm`
 - `POST /api/workspace/{sessionId}/matches/{matchId}/ready`
