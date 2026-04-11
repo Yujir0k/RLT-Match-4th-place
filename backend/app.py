@@ -368,27 +368,60 @@ def compute_dashboard(matches: list[dict[str, Any]], seller_rows: list[dict[str,
     total_matches = len(matches)
     supplier_items = len(seller_rows)
     distinct_lots = len({row.get("pn_lot", "") for row in matches if row.get("pn_lot")})
+    matched_supplier_items = len({row.get("seller_id", "") for row in matches if row.get("seller_id")})
     high_confidence = sum(1 for row in matches if int(row.get("score_100", 0) or 0) >= 90)
-    estimated_hours_saved = max(1, round((supplier_items * 0.06) + (distinct_lots * 0.18)))
+    average_confidence = (
+        round(
+            sum(int(row.get("score_100", 0) or 0) for row in matches) / total_matches
+        )
+        if total_matches > 0
+        else 0
+    )
 
     counter = Counter(str(row.get("seller_category", "")).strip() for row in matches if row.get("seller_category"))
     top_categories = counter.most_common(3)
-    total_for_top = sum(value for _, value in top_categories) or 1
 
     return {
         "highConfidenceCount": high_confidence,
         "totalMatches": total_matches,
         "supplierItems": supplier_items,
+        "matchedSupplierItems": matched_supplier_items,
         "distinctLots": distinct_lots,
-        "estimatedHoursSaved": estimated_hours_saved,
+        "averageConfidence": average_confidence,
         "topCategories": [
             {
                 "label": label,
-                "value": round((count / total_for_top) * 100),
+                "value": round((count / total_matches) * 100) if total_matches > 0 else 0,
             }
             for label, count in top_categories
         ],
     }
+
+
+def compute_dashboard_for_session(session_id: str) -> dict[str, Any]:
+    with closing(db_connect()) as connection:
+        seller_rows = connection.execute(
+            """
+            SELECT seller_id AS id, category AS "Категория", name AS "Наименование", characteristics AS "Характеристики"
+            FROM seller_items
+            WHERE session_id = ?
+            """,
+            (session_id,),
+        ).fetchall()
+
+        matches = connection.execute(
+            """
+            SELECT seller_id, seller_category, pn_lot, score_100
+            FROM matches
+            WHERE session_id = ?
+            """,
+            (session_id,),
+        ).fetchall()
+
+    return compute_dashboard(
+        [dict(row) for row in matches],
+        [dict(row) for row in seller_rows],
+    )
 
 
 def save_cache(cache_key: str, seller_rows: list[dict[str, Any]], matches: list[dict[str, Any]], dashboard: dict[str, Any]) -> None:
@@ -724,18 +757,58 @@ def build_workspace_item(row: sqlite3.Row) -> dict[str, Any]:
     }
 
 
-def fetch_matches_for_category(session_id: str, category: str, min_confidence: int) -> dict[str, list[dict[str, Any]]]:
+def build_workspace_product(row: sqlite3.Row) -> dict[str, Any]:
+    return {
+        "sellerId": row["seller_id"],
+        "name": row["name"],
+        "category": row["category"],
+        "characteristics": row["characteristics"],
+        "matchCount": int(row["match_count"] or 0),
+        "bestScore": int(row["best_score"] or 0),
+    }
+
+
+def fetch_product_row(session_id: str, seller_id: str) -> sqlite3.Row | None:
     with closing(db_connect()) as connection:
+        return connection.execute(
+            """
+            SELECT seller_id, category, name, characteristics
+            FROM seller_items
+            WHERE session_id = ?
+              AND seller_id = ?
+            """,
+            (session_id, seller_id),
+        ).fetchone()
+
+
+def fetch_matches_for_product(session_id: str, seller_id: str, min_confidence: int) -> dict[str, Any]:
+    with closing(db_connect()) as connection:
+        product_row = connection.execute(
+            """
+            SELECT seller_id, category, name, characteristics
+            FROM seller_items
+            WHERE session_id = ?
+              AND seller_id = ?
+            """,
+            (session_id, seller_id),
+        ).fetchone()
+
         rows = connection.execute(
             """
             SELECT *
             FROM matches
             WHERE session_id = ?
-              AND seller_category = ?
+              AND seller_id = ?
               AND score_100 >= ?
             """,
-            (session_id, category, min_confidence),
+            (session_id, seller_id, min_confidence),
         ).fetchall()
+
+    if product_row is None:
+        return {
+            "product": None,
+            "columns": {"new": [], "inProgress": [], "ready": []},
+        }
 
     grouped: dict[str, list[sqlite3.Row]] = {"new": [], "inProgress": [], "ready": []}
     for row in rows:
@@ -754,7 +827,15 @@ def fetch_matches_for_category(session_id: str, category: str, min_confidence: i
             sorted_items = sorted_items[:3]
         response[status] = [build_workspace_item(item) for item in sorted_items]
 
-    return response
+    return {
+        "product": {
+            "sellerId": product_row["seller_id"],
+            "name": product_row["name"],
+            "category": product_row["category"],
+            "characteristics": product_row["characteristics"],
+        },
+        "columns": response,
+    }
 
 
 def run_analysis_job(session_id: str, draft_id: str, column_mapping: list[str], preview_rows: list[list[str]], cache_key: str) -> None:
@@ -780,9 +861,9 @@ def run_analysis_job(session_id: str, draft_id: str, column_mapping: list[str], 
         else:
             seller_rows = cache_payload["sellerRows"]
             matches = cache_payload["matches"]
-            dashboard = cache_payload["dashboard"]
             for row in matches:
                 row["id"] = build_match_id(session_id, row)
+            dashboard = compute_dashboard(matches, seller_rows)
 
         store_session_payload(session_id, seller_rows, matches)
         update_session_status(session_id, "completed", dashboard=dashboard)
@@ -993,35 +1074,50 @@ def get_dashboard(session_id: str) -> dict[str, Any]:
     if session_row["status"] != "completed":
         raise HTTPException(status_code=409, detail="Анализ еще не завершен.")
 
-    return json.loads(session_row["dashboard_json"] or "{}")
+    dashboard = compute_dashboard_for_session(session_id)
+    update_session_status(session_id, "completed", dashboard=dashboard)
+    return dashboard
 
 
-@app.get("/api/workspace/{session_id}/categories")
-def get_workspace_categories(session_id: str) -> dict[str, Any]:
+@app.get("/api/workspace/{session_id}/products")
+def get_workspace_products(session_id: str) -> dict[str, Any]:
     with closing(db_connect()) as connection:
         rows = connection.execute(
             """
-            SELECT DISTINCT category
+            SELECT
+                seller_items.seller_id,
+                seller_items.category,
+                seller_items.name,
+                seller_items.characteristics,
+                COUNT(matches.id) AS match_count,
+                MAX(COALESCE(matches.score_100, 0)) AS best_score
             FROM seller_items
-            WHERE session_id = ?
-              AND category <> ''
-            ORDER BY category COLLATE NOCASE
+            LEFT JOIN matches
+              ON matches.session_id = seller_items.session_id
+             AND matches.seller_id = seller_items.seller_id
+            WHERE seller_items.session_id = ?
+            GROUP BY
+                seller_items.seller_id,
+                seller_items.category,
+                seller_items.name,
+                seller_items.characteristics
+            ORDER BY
+                best_score DESC,
+                seller_items.category COLLATE NOCASE,
+                seller_items.name COLLATE NOCASE
             """,
             (session_id,),
         ).fetchall()
 
     return {
-        "categories": [row["category"] for row in rows],
+        "products": [build_workspace_product(row) for row in rows],
     }
 
 
 @app.get("/api/workspace/{session_id}/board")
-def get_workspace_board(session_id: str, category: str, confidence: int = 0) -> dict[str, Any]:
-    columns = fetch_matches_for_category(session_id, category, confidence)
-    return {
-        "category": category,
-        "columns": columns,
-    }
+def get_workspace_board(session_id: str, sellerId: str, confidence: int = 0) -> dict[str, Any]:
+    payload = fetch_matches_for_product(session_id, sellerId, confidence)
+    return payload
 
 
 @app.post("/api/workspace/{session_id}/matches/{match_id}/confirm")
@@ -1188,7 +1284,14 @@ def export_selected_matches(session_id: str, payload: ExportRequest) -> Streamin
     with closing(db_connect()) as connection:
         rows = connection.execute(
             f"""
-            SELECT lot_subject, unit_okpd_code, score_100
+            SELECT
+                seller_name,
+                seller_category,
+                pn_lot,
+                lot_subject,
+                matched_unit_name,
+                unit_okpd_code,
+                score_100
             FROM matches
             WHERE session_id = ?
               AND id IN ({placeholders})
@@ -1200,9 +1303,29 @@ def export_selected_matches(session_id: str, payload: ExportRequest) -> Streamin
     output = io.StringIO()
     output.write("\ufeff")
     writer = csv.writer(output)
-    writer.writerow(["Название", "ОКПД2", "Уверенность ML"])
+    writer.writerow(
+        [
+            "Название товара",
+            "Категория",
+            "PN lot",
+            "Название лота",
+            "Подходящая позиция внутри лота",
+            "ОКПД2",
+            "Уверенность ML",
+        ]
+    )
     for row in rows:
-        writer.writerow([row["lot_subject"], row["unit_okpd_code"], row["score_100"]])
+        writer.writerow(
+            [
+                row["seller_name"] or "",
+                row["seller_category"] or "",
+                row["pn_lot"] or "",
+                row["lot_subject"] or "",
+                row["matched_unit_name"] or "",
+                row["unit_okpd_code"] or "",
+                row["score_100"] or 0,
+            ]
+        )
 
     content = output.getvalue().encode("utf-8")
 

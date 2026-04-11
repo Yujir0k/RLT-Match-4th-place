@@ -38,6 +38,7 @@ import {
   type SystemSourcesResponse,
   type TenderCardStatus,
   type WorkspaceBoardResponse,
+  type WorkspaceProduct,
   type WorkspaceTender,
 } from "./lib/api";
 import { cn } from "./lib/cn";
@@ -58,12 +59,6 @@ const ANALYSIS_TERMINAL_STEPS = [
   "Векторизация матрицы...",
   "Сравнение семантики...",
   "Сборка выдачи...",
-];
-
-const TOP_CATEGORY_METRICS = [
-  { label: "Расходники", value: 40 },
-  { label: "Платы", value: 30 },
-  { label: "Прочее", value: 30 },
 ];
 
 const WORKSPACE_COLUMNS: Array<{ key: TenderCardStatus; title: string }> = [
@@ -90,8 +85,9 @@ export default function App() {
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisSessionId, setAnalysisSessionId] = useState<string | null>(null);
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
-  const [dynamicCategories, setDynamicCategories] = useState<string[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [workspaceProducts, setWorkspaceProducts] = useState<WorkspaceProduct[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState<WorkspaceBoardResponse["product"]>(null);
   const [isCategoriesExpanded, setIsCategoriesExpanded] = useState(false);
   const [confidenceThreshold, setConfidenceThreshold] = useState(85);
   const [workspaceBoard, setWorkspaceBoard] =
@@ -158,13 +154,13 @@ export default function App() {
   const visibleCategories = useMemo(
     () =>
       isCategoriesExpanded
-        ? dynamicCategories
-        : dynamicCategories.slice(0, collapsedCategoriesLimit),
-    [collapsedCategoriesLimit, dynamicCategories, isCategoriesExpanded]
+        ? workspaceProducts
+        : workspaceProducts.slice(0, collapsedCategoriesLimit),
+    [collapsedCategoriesLimit, isCategoriesExpanded, workspaceProducts]
   );
 
   const shouldShowCategoriesToggle =
-    dynamicCategories.length > collapsedCategoriesLimit;
+    workspaceProducts.length > collapsedCategoriesLimit;
 
   const allWorkspaceTenders = useMemo(
     () => Object.values(workspaceBoard).flat(),
@@ -222,16 +218,17 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (dynamicCategories.length === 0) {
-      setSelectedCategory("");
+    if (workspaceProducts.length === 0) {
+      setSelectedProductId("");
+      setSelectedProduct(null);
       setIsCategoriesExpanded(false);
       return;
     }
 
-    if (!dynamicCategories.includes(selectedCategory)) {
-      setSelectedCategory(dynamicCategories[0]);
+    if (!workspaceProducts.some((product) => product.sellerId === selectedProductId)) {
+      setSelectedProductId(workspaceProducts[0].sellerId);
     }
-  }, [dynamicCategories, selectedCategory]);
+  }, [selectedProductId, workspaceProducts]);
 
   useEffect(() => {
     setIsCategoriesExpanded(false);
@@ -257,7 +254,7 @@ export default function App() {
         setAnalysisProgress(statusPayload.progress);
 
         if (statusPayload.status === "completed") {
-          const [dashboardPayload, categoriesPayload] = await Promise.all([
+          const [dashboardPayload, productsPayload] = await Promise.all([
             getDashboard(analysisSessionId),
             getWorkspaceCategories(analysisSessionId),
           ]);
@@ -267,7 +264,7 @@ export default function App() {
           }
 
           setDashboardData(dashboardPayload);
-          setDynamicCategories(categoriesPayload.categories);
+          setWorkspaceProducts(productsPayload.products);
           setStep(3);
           return;
         }
@@ -302,21 +299,23 @@ export default function App() {
   }, [analysisSessionId, step]);
 
   useEffect(() => {
-    if (step !== 4 || !analysisSessionId || !selectedCategory) {
+    if (step !== 4 || !analysisSessionId || !selectedProductId) {
       return;
     }
 
     let cancelled = false;
     setIsBoardLoading(true);
 
-    getWorkspaceBoard(analysisSessionId, selectedCategory, confidenceThreshold)
+    getWorkspaceBoard(analysisSessionId, selectedProductId, confidenceThreshold)
       .then((payload) => {
         if (!cancelled) {
+          setSelectedProduct(payload.product);
           setWorkspaceBoard(payload.columns);
         }
       })
       .catch((error) => {
         if (!cancelled) {
+          setSelectedProduct(null);
           setWorkspaceBoard(EMPTY_WORKSPACE_BOARD);
           setAppError(
             error instanceof Error
@@ -334,19 +333,21 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [analysisSessionId, confidenceThreshold, selectedCategory, step]);
+  }, [analysisSessionId, confidenceThreshold, selectedProductId, step]);
 
-  const refreshWorkspaceBoard = async (category = selectedCategory) => {
-    if (!analysisSessionId || !category) {
+  const refreshWorkspaceBoard = async (sellerId = selectedProductId) => {
+    if (!analysisSessionId || !sellerId) {
+      setSelectedProduct(null);
       setWorkspaceBoard(EMPTY_WORKSPACE_BOARD);
       return;
     }
 
     const payload = await getWorkspaceBoard(
       analysisSessionId,
-      category,
+      sellerId,
       confidenceThreshold
     );
+    setSelectedProduct(payload.product);
     setWorkspaceBoard(payload.columns);
   };
 
@@ -364,8 +365,9 @@ export default function App() {
       setColumnMapping(previewPayload.suggestedMapping);
       setAnalysisSessionId(null);
       setDashboardData(null);
-      setDynamicCategories([]);
-      setSelectedCategory("");
+      setWorkspaceProducts([]);
+      setSelectedProductId("");
+      setSelectedProduct(null);
       setWorkspaceBoard(EMPTY_WORKSPACE_BOARD);
       setSelectedTenderIds([]);
       setSelectedTenderMatch(null);
@@ -461,8 +463,8 @@ export default function App() {
     );
   };
 
-  const handleCategorySelect = (category: string) => {
-    setSelectedCategory(category);
+  const handleProductSelect = (sellerId: string) => {
+    setSelectedProductId(sellerId);
   };
 
   const handleStartAnalysis = async () => {
@@ -683,9 +685,10 @@ export default function App() {
       setAnalysisStatus(ANALYSIS_TERMINAL_STEPS[0]);
       setAnalysisProgress(0);
       setDashboardData(null);
-      setDynamicCategories([]);
+      setWorkspaceProducts([]);
       setWorkspaceBoard(EMPTY_WORKSPACE_BOARD);
-      setSelectedCategory("");
+      setSelectedProductId("");
+      setSelectedProduct(null);
       setSelectedTenderIds([]);
       setAnalysisSessionId(null);
       setStep(1);
@@ -976,27 +979,31 @@ export default function App() {
             <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-3">
               <div className="relative z-10 flex h-full cursor-pointer flex-col gap-2 rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl hover:ring-4 hover:ring-slate-100">
                 <p className="text-control font-medium text-text-primary">
-                  Воронка мэтчинга
+                  Найдено совпадений
                 </p>
                 <p className="text-h2 font-medium text-primary-base">
-                  {dashboardData?.highConfidenceCount ?? 0} тендеров
+                  {dashboardData?.totalMatches ?? 0} совпадений
                 </p>
                 <p className="text-sm leading-6 text-text-secondary">
-                  С точностью &gt; 90%. Всего найдено {dashboardData?.totalMatches ?? 0} релевантных
-                  процедур по {dashboardData?.supplierItems ?? 0} позициям матрицы.
+                  По {dashboardData?.matchedSupplierItems ?? 0} из {dashboardData?.supplierItems ?? 0} товаров
+                  матрицы. Уникальных pn lot: {dashboardData?.distinctLots ?? 0}.
                 </p>
               </div>
 
               <div className="relative z-10 flex h-full cursor-pointer flex-col gap-2 rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl hover:ring-4 hover:ring-slate-100">
                 <p className="text-control font-medium text-text-primary">
-                  Сэкономлено времени
+                  Уникальных PN lot
                 </p>
                 <p className="text-h2 font-medium text-primary-base">
-                  ~{dashboardData?.estimatedHoursSaved ?? 0} часов
+                  {dashboardData?.distinctLots ?? 0}
                 </p>
                 <p className="text-sm leading-6 text-text-secondary">
-                  Обработано {dashboardData?.distinctLots ?? 0} уникальных лотов. Экономия
-                  времени тендерного отдела на ручной верификации.
+                  Покрыто {dashboardData?.matchedSupplierItems ?? 0} товаров поставщика из{" "}
+                  {dashboardData?.supplierItems ?? 0}. В среднем{" "}
+                  {dashboardData && dashboardData.matchedSupplierItems > 0
+                    ? (dashboardData.totalMatches / dashboardData.matchedSupplierItems).toFixed(1)
+                    : "0.0"}{" "}
+                  совпадения на товар.
                 </p>
               </div>
 
@@ -1004,25 +1011,28 @@ export default function App() {
                 <p className="text-control font-medium text-text-primary">
                   Топ категорий
                 </p>
-                <div className="space-y-4">
-                  {(dashboardData?.topCategories.length
-                    ? dashboardData.topCategories
-                    : TOP_CATEGORY_METRICS
-                  ).map((item) => (
-                    <div key={item.label} className="space-y-2">
-                      <div className="flex items-center justify-between gap-4 text-sm">
-                        <span className="text-text-primary">{item.label}</span>
-                        <span className="text-text-secondary">{item.value}%</span>
+                {dashboardData?.topCategories.length ? (
+                  <div className="space-y-4">
+                    {dashboardData.topCategories.map((item) => (
+                      <div key={item.label} className="space-y-2">
+                        <div className="flex items-center justify-between gap-4 text-sm">
+                          <span className="text-text-primary">{item.label}</span>
+                          <span className="text-text-secondary">{item.value}%</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-slate-200">
+                          <div
+                            className="h-2 rounded-full bg-primary-base"
+                            style={{ width: `${item.value}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-2 rounded-full bg-slate-200">
-                        <div
-                          className="h-2 rounded-full bg-primary-base"
-                          style={{ width: `${item.value}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-lg bg-slate-50 px-4 py-3 text-sm text-text-secondary">
+                    После анализа здесь появятся реальные лидирующие категории.
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1037,31 +1047,34 @@ export default function App() {
             <div className="flex h-full gap-6">
               <aside className="flex h-full w-1/4 flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="border-b border-slate-200 pb-4">
-                  <p className="text-sm font-medium text-text-secondary">Категории матрицы</p>
+                  <p className="text-sm font-medium text-text-secondary">Товары матрицы</p>
                   <h2 className="mt-2 text-xl font-semibold text-text-primary">
                     Рабочее пространство
                   </h2>
                 </div>
 
                 <div className="mt-4 flex min-h-0 flex-1 flex-col">
-                  {dynamicCategories.length > 0 ? (
+                  {workspaceProducts.length > 0 ? (
                     !isCategoriesExpanded ? (
                       <div className="flex min-h-0 flex-1 flex-col">
                         <div className="flex-1 overflow-hidden pr-2">
                           <div className="flex flex-col gap-1.5 items-stretch">
-                            {visibleCategories.map((category) => (
+                            {visibleCategories.map((product) => (
                               <button
-                                key={category}
+                                key={product.sellerId}
                                 type="button"
                                 className={cn(
                                   "w-full text-left px-3 py-2 text-sm leading-tight whitespace-normal break-words h-auto min-h-fit rounded-md transition-colors",
-                                  selectedCategory === category
+                                  selectedProductId === product.sellerId
                                     ? "bg-primary-light text-primary-base font-medium"
                                     : "text-text-secondary hover:bg-slate-100 hover:text-text-primary"
                                 )}
-                                onClick={() => handleCategorySelect(category)}
+                                onClick={() => handleProductSelect(product.sellerId)}
                               >
-                                {category}
+                                <span className="block">{product.name}</span>
+                                <span className="mt-1 block text-xs text-inherit/70">
+                                  {product.category}
+                                </span>
                               </button>
                             ))}
                           </div>
@@ -1073,7 +1086,7 @@ export default function App() {
                             onClick={() => setIsCategoriesExpanded(true)}
                             className="w-full mt-4 shrink-0"
                           >
-                            Показать еще ({dynamicCategories.length - collapsedCategoriesLimit})
+                            Показать еще ({workspaceProducts.length - collapsedCategoriesLimit})
                           </Button>
                         ) : null}
                       </div>
@@ -1081,19 +1094,22 @@ export default function App() {
                       <div className="flex min-h-0 flex-1 flex-col">
                         <div className="flex-1 overflow-y-auto pr-2">
                           <div className="flex flex-col gap-1.5 items-stretch">
-                            {visibleCategories.map((category) => (
+                            {visibleCategories.map((product) => (
                               <button
-                                key={category}
+                                key={product.sellerId}
                                 type="button"
                                 className={cn(
                                   "w-full text-left px-3 py-2 text-sm leading-tight whitespace-normal break-words h-auto min-h-fit rounded-md transition-colors",
-                                  selectedCategory === category
+                                  selectedProductId === product.sellerId
                                     ? "bg-primary-light text-primary-base font-medium"
                                     : "text-text-secondary hover:bg-slate-100 hover:text-text-primary"
                                 )}
-                                onClick={() => handleCategorySelect(category)}
+                                onClick={() => handleProductSelect(product.sellerId)}
                               >
-                                {category}
+                                <span className="block">{product.name}</span>
+                                <span className="mt-1 block text-xs text-inherit/70">
+                                  {product.category}
+                                </span>
                               </button>
                             ))}
                           </div>
@@ -1112,13 +1128,13 @@ export default function App() {
                     )
                   ) : (
                     <div className="rounded-lg bg-slate-50 px-4 py-3 text-sm text-text-secondary">
-                      Загрузка категорий...
+                      Загрузка товаров...
                     </div>
                   )}
                 </div>
               </aside>
 
-              <div className="flex h-full w-3/4 flex-col rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex h-full min-h-0 w-3/4 flex-col rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="mb-6 flex items-center justify-between gap-6">
                   <div className="w-full max-w-md">
                     <Slider
@@ -1149,9 +1165,9 @@ export default function App() {
                   </div>
                 </div>
 
-                {selectedCategory === "" ? (
+                {selectedProduct === null && selectedProductId === "" ? (
                   <div className="flex h-[calc(100%-80px)] items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 px-6 text-center text-sm text-text-secondary">
-                    Загрузка категорий...
+                    Загрузка товаров...
                   </div>
                 ) : isBoardLoading ? (
                   <div className="flex h-[calc(100%-80px)] items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 px-6 text-center text-sm text-text-secondary">
@@ -1159,17 +1175,38 @@ export default function App() {
                   </div>
                 ) : allWorkspaceTenders.length === 0 ? (
                   <div className="flex h-[calc(100%-80px)] items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 px-6 text-center text-sm text-text-secondary">
-                    Для этой категории пока нет подобранных тендеров
+                    Для этого товара пока нет подобранных тендеров
                   </div>
                 ) : (
-                  <div className="grid h-[calc(100%-80px)] grid-cols-3 gap-4">
+                  <div className="flex h-[calc(100%-80px)] min-h-0 flex-col gap-4 overflow-hidden">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-medium uppercase tracking-wide text-text-secondary">
+                        Исходный запрос продавца
+                      </p>
+                      <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-[140px_1fr]">
+                        <div className="space-y-2 text-sm text-text-secondary">
+                          <p>ID: {selectedProduct?.sellerId || "—"}</p>
+                          <p>Категория: {selectedProduct?.category || "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-control font-medium text-text-primary">
+                            {selectedProduct?.name || "Товар не выбран"}
+                          </p>
+                          <p className="mt-2 text-sm leading-6 text-text-secondary">
+                            {selectedProduct?.characteristics || "Характеристики отсутствуют"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid min-h-0 flex-1 grid-cols-3 gap-4 overflow-hidden">
                     {WORKSPACE_COLUMNS.map((column) => {
                       const columnTenders = getColumnTenders(column.key);
 
                       return (
                         <div
                           key={column.key}
-                          className="flex flex-col gap-3 overflow-y-auto rounded-lg bg-slate-50 p-4"
+                          className="flex min-h-0 min-w-0 flex-col gap-3 overflow-y-auto rounded-lg bg-slate-50 p-4"
                         >
                           <div className="flex items-center justify-between">
                             <h3 className="text-control font-medium text-text-primary">
@@ -1191,7 +1228,7 @@ export default function App() {
                               return (
                                 <article
                                   key={tender.id}
-                                  className="relative z-10 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl hover:ring-4 hover:ring-slate-100"
+                                  className="relative z-10 min-w-0 shrink-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl hover:ring-4 hover:ring-slate-100"
                                 >
                                   <div className="mb-2 flex items-start justify-between gap-3">
                                     {isReady ? (
@@ -1214,11 +1251,35 @@ export default function App() {
                                   </div>
 
                                   <div>
-                                    <p className="text-control font-medium text-text-primary">
-                                      {tender.title}
+                                    <p className="text-xs font-medium uppercase tracking-wide text-text-secondary">
+                                      PN lot
                                     </p>
-                                    <p className="mt-1 text-sm text-text-secondary">
-                                      ОКПД2: {tender.okpd2}
+                                    <p className="mt-1 break-all text-sm font-medium text-primary-base">
+                                      {tender.pnLot || "—"}
+                                    </p>
+                                  </div>
+
+                                  <div className="mt-3">
+                                    <p className="text-xs font-medium uppercase tracking-wide text-text-secondary">
+                                      Название лота
+                                    </p>
+                                    <p className="break-words text-control font-medium text-text-primary">
+                                      {tender.lotSubject || tender.title}
+                                    </p>
+                                    <p className="mt-1 break-words text-sm text-text-secondary">
+                                      Процедура: {tender.procedureName || "—"}
+                                    </p>
+                                  </div>
+
+                                  <div className="mt-3 rounded-md bg-bg-surface px-3 py-2">
+                                    <p className="text-xs font-medium uppercase tracking-wide text-text-secondary">
+                                      Подходящая позиция внутри лота
+                                    </p>
+                                    <p className="mt-1 break-words text-sm font-medium text-text-primary">
+                                      {tender.matchedUnitName || "Позиция не определена"}
+                                    </p>
+                                    <p className="mt-1 text-xs text-text-secondary">
+                                      ОКПД2: {tender.okpd2 || "—"}
                                     </p>
                                   </div>
 
@@ -1283,12 +1344,13 @@ export default function App() {
                             })
                           ) : (
                             <div className="rounded-lg border border-dashed border-slate-200 bg-white p-4 text-sm text-text-secondary">
-                              Для этой категории пока нет подобранных тендеров
+                              Для этого товара пока нет карточек в колонке
                             </div>
                           )}
                         </div>
                       );
                     })}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1315,7 +1377,7 @@ export default function App() {
                   Детальное сравнение позиций
                 </h3>
                 <p className="mt-2 text-sm text-text-secondary">
-                  {selectedTenderMatch.title}
+                  {selectedTenderMatch.pnLot} · {selectedTenderMatch.lotSubject || selectedTenderMatch.title}
                 </p>
               </div>
 

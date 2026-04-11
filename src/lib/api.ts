@@ -17,6 +17,15 @@ export type WorkspaceTender = {
   explanationShort: string;
 };
 
+export type WorkspaceProduct = {
+  sellerId: string;
+  name: string;
+  category: string;
+  characteristics: string;
+  matchCount: number;
+  bestScore: number;
+};
+
 export type MatrixPreviewResponse = {
   draftId: string;
   fileName: string;
@@ -38,8 +47,9 @@ export type DashboardResponse = {
   highConfidenceCount: number;
   totalMatches: number;
   supplierItems: number;
+  matchedSupplierItems: number;
   distinctLots: number;
-  estimatedHoursSaved: number;
+  averageConfidence: number;
   topCategories: Array<{
     label: string;
     value: number;
@@ -47,7 +57,12 @@ export type DashboardResponse = {
 };
 
 export type WorkspaceBoardResponse = {
-  category: string;
+  product: {
+    sellerId: string;
+    name: string;
+    category: string;
+    characteristics: string;
+  } | null;
   columns: Record<TenderCardStatus, WorkspaceTender[]>;
 };
 
@@ -137,18 +152,18 @@ export async function getDashboard(sessionId: string): Promise<DashboardResponse
 
 export async function getWorkspaceCategories(
   sessionId: string
-): Promise<{ categories: string[] }> {
-  const response = await fetch(`/api/workspace/${sessionId}/categories`);
-  return parseResponse<{ categories: string[] }>(response);
+): Promise<{ products: WorkspaceProduct[] }> {
+  const response = await fetch(`/api/workspace/${sessionId}/products`);
+  return parseResponse<{ products: WorkspaceProduct[] }>(response);
 }
 
 export async function getWorkspaceBoard(
   sessionId: string,
-  category: string,
+  sellerId: string,
   confidence: number
 ): Promise<WorkspaceBoardResponse> {
   const response = await fetch(
-    `/api/workspace/${sessionId}/board?category=${encodeURIComponent(category)}&confidence=${confidence}`
+    `/api/workspace/${sessionId}/board?sellerId=${encodeURIComponent(sellerId)}&confidence=${confidence}`
   );
   return parseResponse<WorkspaceBoardResponse>(response);
 }
