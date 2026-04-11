@@ -1,0 +1,12 @@
+node_modules/
+dist/
+_ml_unpack/
+backend/data/
+*.pyc
+__pycache__/
+.DS_Store
+tsconfig.tsbuildinfo
+
+# Large local ML/data artifacts
+hybrid_lot_matcher_package.zip
+Закупки для интенсива_20260411_csv.csv
