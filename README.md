@@ -1,4 +1,4 @@
-# Matching Analytics
+<img width="1280" height="753" alt="photo_5_2026-04-15_21-32-22" src="https://github.com/user-attachments/assets/81c4782f-8fdb-4ada-b2cd-8594b367f6bf" /># Matching Analytics
 
 Интеллектуальный B2B-сервис для поиска закупочных процедур, ассоциированных с номенклатурной матрицей поставщика.
 
@@ -57,33 +57,29 @@ TODO: вставить ссылку на demo video
 
 #### 1. Загрузка номенклатурной матрицы
 
-```md
-![Загрузка матрицы](docs/assets/step-1-upload.png)
-```
+<img width="1280" height="756" alt="photo_7_2026-04-15_21-32-22" src="https://github.com/user-attachments/assets/c84dc665-bf2d-472a-9178-c5d8501018de" />
 
-#### 2. Анализ данных
+<img width="1280" height="758" alt="photo_6_2026-04-15_21-32-22" src="https://github.com/user-attachments/assets/b6858af3-8566-4133-9354-973328d93937" />
 
-```md
-![Анализ данных](docs/assets/step-2-loader.png)
-```
 
-#### 3. Аналитика мэтчинга
+#### 2. Аналитика мэтчинга
 
-```md
-![Аналитика мэтчинга](docs/assets/step-3-dashboard.png)
-```
+<img width="1280" height="753" alt="photo_5_2026-04-15_21-32-22" src="https://github.com/user-attachments/assets/f9b398f2-7f7a-461e-9b1e-15322ebe6134" />
 
-#### 4. Рабочее пространство
 
-```md
-![Рабочее пространство](docs/assets/step-4-workspace.png)
-```
+#### 3. Рабочее пространство
 
-#### 5. Explainable AI / Diff View
+<img width="1280" height="759" alt="photo_4_2026-04-15_21-32-22" src="https://github.com/user-attachments/assets/331d8ef8-d8dd-4ac9-a608-4453e91a372d" />
 
-```md
-![Explainable AI](docs/assets/diff-view.png)
-```
+<img width="1280" height="1109" alt="photo_2_2026-04-15_21-32-22" src="https://github.com/user-attachments/assets/bb85062a-ca29-42fe-8802-fa754e73e571" />
+
+<img width="1280" height="1097" alt="photo_1_2026-04-15_21-32-22" src="https://github.com/user-attachments/assets/8433de24-251c-48c9-befc-1831ccade70e" />
+
+
+#### 4. Explainable AI / Diff View
+
+<img width="1280" height="757" alt="photo_3_2026-04-15_21-32-22" src="https://github.com/user-attachments/assets/cff2af07-be80-42e5-9616-b4665e9dc740" />
+
 
 ## Реализованный пользовательский сценарий
 
