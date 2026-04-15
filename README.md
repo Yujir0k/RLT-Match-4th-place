@@ -1,4 +1,4 @@
-<img width="1280" height="753" alt="photo_5_2026-04-15_21-32-22" src="https://github.com/user-attachments/assets/81c4782f-8fdb-4ada-b2cd-8594b367f6bf" /># Matching Analytics
+# Matching Analytics
 
 Интеллектуальный B2B-сервис для поиска закупочных процедур, ассоциированных с номенклатурной матрицей поставщика.
 
