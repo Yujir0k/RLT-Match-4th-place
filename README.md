@@ -22,18 +22,21 @@
 
 ### Ссылки для быстрого доступа:
 
-- [Project Demo Video](#демо)
-- [Frontend App](src/App.tsx)
-- [Frontend API Client](src/lib/api.ts)
-- [Backend API](backend/app.py)
-- [Backend Dependencies](backend/requirements.txt)
-- [ML Notebooks Overview](notebooks/ml/README.md)
-- [Hybrid Runtime Notebook](notebooks/ml/01_hybrid_matcher_runtime.ipynb)
-- [Batch Prediction Notebook](notebooks/ml/03_batch_prediction.ipynb)
+- [Обзор](#overview)
+- [Бизнес-задача](#business-task)
+- [Что делает сервис](#service-flow)
+- [Демо](#demo)
+- [Пользовательский сценарий](#user-scenario)
+- [Техническая реализация](#technical-stack)
+- [Архитектура](#architecture)
+- [Структура проекта](#project-structure)
+- [ML Notebooks](#ml-notebooks)
+- [Запуск](#run-guide)
 
 ---
 <!-- README_TOP_CARDS_END -->
 
+<a id="overview"></a>
 # RLT Match
 
 Интеллектуальный B2B-сервис для поиска закупочных процедур, ассоциированных с номенклатурной матрицей поставщика.
@@ -42,6 +45,7 @@
 
 По итогам интенсива наша команда R² negative заняла **4 место** с этим решением.
 
+<a id="business-task"></a>
 ## Бизнес-задача
 
 Поставщики, селлеры маркетплейсов и представители интернет-магазинов часто имеют большую номенклатурную матрицу: сотни или тысячи товаров с категориями, характеристиками и внутренними идентификаторами.
@@ -57,6 +61,7 @@
 
 Наш сервис решает эту задачу: поставщик загружает свою матрицу, а система локально анализирует ее и показывает для каждого товара top-3 наиболее релевантных `PN lot` из внутренней базы закупок.
 
+<a id="service-flow"></a>
 ## Что делает сервис
 
 Пользователь загружает номенклатурную матрицу в формате `CSV` или `Excel`. Система показывает preview файла, предлагает маппинг колонок и после запуска анализа подбирает закупочные лоты под каждый товар.
@@ -71,6 +76,7 @@
 - объяснение, почему лот был подобран;
 - возможность подтвердить, отклонить, отправить feedback и экспортировать результат.
 
+<a id="demo"></a>
 ## Демо
 
 ### Видео демонстрации
@@ -107,6 +113,7 @@ https://github.com/user-attachments/assets/eebb3c3b-eb06-4828-a492-c3383de11a58
 <img width="1280" height="757" alt="photo_3_2026-04-15_21-32-22" src="https://github.com/user-attachments/assets/cff2af07-be80-42e5-9616-b4665e9dc740" />
 
 
+<a id="user-scenario"></a>
 ## Реализованный пользовательский сценарий
 
 ### Шаг 1. Загрузка матрицы поставщика
@@ -187,11 +194,14 @@ Backend в это время:
 
 Эти данные сохраняются на backend и могут использоваться для дальнейшего улучшения модели.
 
+<a id="technical-stack"></a>
 ## Что реализовано технически
 
 ### Frontend
 
 Frontend написан на `React + TypeScript + Vite + Tailwind CSS`.
+
+Ключевые файлы frontend: [src/App.tsx](src/App.tsx), [src/lib/api.ts](src/lib/api.ts), [src/components/ui/](src/components/ui).
 
 Реализовано:
 - SPA-интерфейс с пошаговым сценарием;
@@ -217,6 +227,8 @@ Frontend написан на `React + TypeScript + Vite + Tailwind CSS`.
 
 Backend написан на `FastAPI`.
 
+Ключевые файлы backend: [backend/app.py](backend/app.py), [backend/requirements.txt](backend/requirements.txt).
+
 Реализовано:
 - загрузка матрицы поставщика через API;
 - чтение `CSV/XLSX`;
@@ -239,6 +251,8 @@ Backend написан на `FastAPI`.
 ### ML
 
 ML-составляющая работает локально и не использует внешние API.
+
+Ключевые ML-артефакты: [notebooks/ml/README.md](notebooks/ml/README.md), [notebooks/ml/01_hybrid_matcher_runtime.ipynb](notebooks/ml/01_hybrid_matcher_runtime.ipynb), [notebooks/ml/03_batch_prediction.ipynb](notebooks/ml/03_batch_prediction.ipynb), [hybrid_lot_matcher_package.zip](hybrid_lot_matcher_package.zip).
 
 Используется гибридный retrieval runtime:
 - TF-IDF;
@@ -263,6 +277,7 @@ ML-составляющая работает локально и не испол
 - ML runtime запускается локально на backend;
 - база закупок и справочник ОКПД2 лежат внутри системы.
 
+<a id="architecture"></a>
 ## Архитектура
 
 ```text
@@ -282,6 +297,7 @@ FastAPI backend
       -> prepared procurement base
 ```
 
+<a id="project-structure"></a>
 ## Структура проекта
 
 ```text
@@ -301,6 +317,7 @@ vite.config.ts       Vite config и proxy на backend
 README.md            описание проекта
 ```
 
+<a id="ml-notebooks"></a>
 ## ML notebooks
 
 В репозиторий добавлены notebooks с кодом и описанием ML-составляющей:
@@ -322,6 +339,8 @@ README.md            описание проекта
 Это сделано из-за лимитов GitHub на размер файлов.
 
 Для полного локального запуска нужно вручную положить архив:
+
+- Архив модели: [hybrid_lot_matcher_package.zip](hybrid_lot_matcher_package.zip) (положите файл в корень проекта рядом с `package.json`).
 
 ```text
 hybrid_lot_matcher_package.zip
@@ -351,6 +370,7 @@ npm install
 python3 -m pip install -r backend/requirements.txt
 ```
 
+<a id="run-guide"></a>
 ## Запуск
 
 ### 1. Поднять backend
