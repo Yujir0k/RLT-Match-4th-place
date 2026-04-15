@@ -1,3 +1,39 @@
+<!-- README_TOP_CARDS_START -->
+<div align="center">
+
+## RLT Match - 4th Place Solution
+
+[![Frontend](https://img.shields.io/badge/Frontend-React%20%2B%20TypeScript-61DAFB?style=for-the-badge&logo=react&logoColor=111111)](#)
+[![Build](https://img.shields.io/badge/Build-Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](#)
+[![UI](https://img.shields.io/badge/UI-Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](#)
+[![Backend](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](#)
+[![ML](https://img.shields.io/badge/ML-Pandas%20%7C%20Hybrid_Matching-1F6FEB?style=for-the-badge)](#)
+[![Runtime](https://img.shields.io/badge/Runtime-Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](#)
+
+</div>
+
+<table>
+  <tr>
+    <td align="center" width="33%"><b>Frontend</b><br/>React + TypeScript + Vite + Tailwind CSS</td>
+    <td align="center" width="33%"><b>Backend</b><br/>FastAPI + local SQLite + batch processing</td>
+    <td align="center" width="33%"><b>ML Layer</b><br/>Hybrid lot matching runtime + notebooks</td>
+  </tr>
+</table>
+
+### Quick Links
+
+- [Project Demo Video](#демо)
+- [Frontend App](src/App.tsx)
+- [Frontend API Client](src/lib/api.ts)
+- [Backend API](backend/app.py)
+- [Backend Dependencies](backend/requirements.txt)
+- [ML Notebooks Overview](notebooks/ml/README.md)
+- [Hybrid Runtime Notebook](notebooks/ml/01_hybrid_matcher_runtime.ipynb)
+- [Batch Prediction Notebook](notebooks/ml/03_batch_prediction.ipynb)
+
+---
+<!-- README_TOP_CARDS_END -->
+
 # RLT Match
 
 Интеллектуальный B2B-сервис для поиска закупочных процедур, ассоциированных с номенклатурной матрицей поставщика.
