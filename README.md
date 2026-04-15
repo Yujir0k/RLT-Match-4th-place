@@ -1,4 +1,4 @@
-<!-- README_TOP_CARDS_START -->
+
 <div align="center">
 
 ## RLT Match - 4th Place Solution
@@ -20,13 +20,16 @@
   </tr>
 </table>
 
+<div align="center">
+  
 ### Ссылки для быстрого доступа:
 
 [Обзор](#overview) • [Бизнес-задача](#business-task) • [Что делает сервис](#service-flow) • [Демо](#demo) • [Пользовательский сценарий](#user-scenario) • [Техническая реализация](#technical-stack) • [Архитектура](#architecture) • [Структура проекта](#project-structure) • [ML Notebooks](#ml-notebooks) • [Запуск](#run-guide)
 
 ---
-<!-- README_TOP_CARDS_END -->
 
+<div align="left">
+  
 <a id="overview"></a>
 # RLT Match
 
@@ -67,6 +70,8 @@
 - объяснение, почему лот был подобран;
 - возможность подтвердить, отклонить, отправить feedback и экспортировать результат.
 
+<div align="center">
+
 <a id="demo"></a>
 ## Демо
 
@@ -105,6 +110,9 @@ https://github.com/user-attachments/assets/eebb3c3b-eb06-4828-a492-c3383de11a58
 
 
 <a id="user-scenario"></a>
+
+<div align="left">
+
 ## Реализованный пользовательский сценарий
 
 ### Шаг 1. Загрузка матрицы поставщика
