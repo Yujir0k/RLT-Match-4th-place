@@ -22,16 +22,7 @@
 
 ### Ссылки для быстрого доступа:
 
-- [Обзор](#overview)
-- [Бизнес-задача](#business-task)
-- [Что делает сервис](#service-flow)
-- [Демо](#demo)
-- [Пользовательский сценарий](#user-scenario)
-- [Техническая реализация](#technical-stack)
-- [Архитектура](#architecture)
-- [Структура проекта](#project-structure)
-- [ML Notebooks](#ml-notebooks)
-- [Запуск](#run-guide)
+[Обзор](#overview) • [Бизнес-задача](#business-task) • [Что делает сервис](#service-flow) • [Демо](#demo) • [Пользовательский сценарий](#user-scenario) • [Техническая реализация](#technical-stack) • [Архитектура](#architecture) • [Структура проекта](#project-structure) • [ML Notebooks](#ml-notebooks) • [Запуск](#run-guide)
 
 ---
 <!-- README_TOP_CARDS_END -->
