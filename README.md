@@ -20,7 +20,7 @@
   </tr>
 </table>
 
-### Quick Links
+### Ссылки для быстрого доступа:
 
 - [Project Demo Video](#демо)
 - [Frontend App](src/App.tsx)
